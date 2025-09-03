@@ -79,3 +79,26 @@ get_db()
 @app.get("/")
 def root():
     return {"message": "Intro to FastAPI with SQL Demo"}
+
+
+@app.get("/users/{user_id}", response_model=UserResponse)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    # to receive a user we need to query the DB to fetch a user
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found!")
+    return user
+
+
+@app.post("/users/", response_model=UserResponse)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    # query to check if email exists in database:
+    if db.query(User).filter(User.email == user.email).first():
+        raise HTTPException(status_code=404, detail="User already exists!")
+    # Create a new user
+    new_user = User(**user.dict())
+    db.add(new_user)
+    db.commit()  # always commit after a change to the database is made
+    db.refresh(new_user)
+
+    return new_user
